@@ -1,12 +1,15 @@
 import argparse
 import pydoc
 import sys
+import json
+import os
 
 from eg import config
 from eg import util
 
 
 _MSG_BAD_ARGS = 'specify a program or pass the --list or --version flags'
+LABELS_PATH = os.path.expanduser('~/.eglabels.json')
 
 
 def _show_version():
@@ -62,6 +65,44 @@ def _handle_no_editor():
         'could not find editor: set $VISUAL, $EDITOR, or specify in .egrc'
     )
 
+
+def _show_labels(program):
+    with open(LABELS_PATH) as labels_file:
+        labels = json.load(labels_file)
+    if program in labels:
+        print(', '.join(labels[program]))
+
+
+def _add_label(program, label):
+    with open(LABELS_PATH) as labels_file:
+        labels = json.load(labels_file)
+    if program in labels:
+        labels[program].append(label)
+    else:
+        labels[program] = [label]
+    with open(LABELS_PATH, 'w') as labels_file:
+        json.dump(labels, labels_file)
+
+
+def _remove_label(program, label):
+    with open(LABELS_PATH) as labels_file:
+        labels = json.load(labels_file)
+    if program in labels:
+        labels[program].remove(label)
+    else:
+        print('Program does not have any labels.')
+    with open(LABELS_PATH, 'w') as labels_file:
+        json.dump(labels, labels_file)
+
+
+def _find_file(label):
+    with open(LABELS_PATH) as labels_file:
+        labels = json.load(labels_file)
+    programs = []
+    for program in labels.keys():
+        if label in labels[program]:
+            programs.append(program)
+    print(', '.join(programs))
 
 def _parse_arguments():
     """
@@ -147,6 +188,27 @@ def _parse_arguments():
         help='The program for which to display examples.'
     )
 
+    parser.add_argument(
+        '--labels',
+        action='store_true',
+        help='Show all labels.'
+    )
+
+    parser.add_argument(
+        '--add-label',
+        help='Adds a label to the program.'
+    )
+
+    parser.add_argument(
+        '--remove-label',
+        help='Remove a label from the program.'
+    )
+    
+    parser.add_argument(
+        '--find-file',
+        help='Finds all files that are tagged with the specified label.'
+    )
+
     args = parser.parse_args()
 
     if len(sys.argv) < 2:
@@ -154,7 +216,7 @@ def _parse_arguments():
         # have to manually check.
         parser.print_help()
         parser.exit()
-    elif not args.version and not args.list and not args.program:
+    elif not args.version and not args.list and not args.program and not args.find_file:
         parser.error(_MSG_BAD_ARGS)
     else:
         return args
@@ -181,6 +243,14 @@ def run_eg():
             _handle_no_editor()
         else:
             util.edit_custom_examples(args.program, resolved_config)
+    elif args.labels:
+        _show_labels(args.program)
+    elif args.add_label:
+        _add_label(args.program, args.add_label)
+    elif args.find_file:
+        _find_file(args.find_file)
+    elif args.remove_label:
+        _remove_label(args.program, args.remove_label)
     else:
         util.handle_program(args.program, resolved_config)
 

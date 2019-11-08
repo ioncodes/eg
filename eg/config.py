@@ -66,7 +66,7 @@ Config = namedtuple(
         'pager_cmd',
         'squeeze',
         'subs',
-        'editor_cmd',
+        'editor_cmd'
     ]
 )
 
